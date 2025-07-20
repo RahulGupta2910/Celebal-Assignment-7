@@ -1,0 +1,1273 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "adf-fileload-celebal"
+        },
+        "LS_ADLS_accountKey": {
+            "type": "secureString",
+            "metadata": "Secure string for 'accountKey' of 'LS_ADLS'"
+        },
+        "LS_SQLDB_password": {
+            "type": "secureString",
+            "metadata": "Secure string for 'password' of 'LS_SQLDB'"
+        },
+        "LS_ADLS_properties_typeProperties_url": {
+            "type": "string",
+            "defaultValue": "https://adffileloadstorage.dfs.core.windows.net/"
+        },
+        "LS_SQLDB_properties_typeProperties_server": {
+            "type": "string",
+            "defaultValue": "adf-sql-server-celebal.database.windows.net"
+        },
+        "LS_SQLDB_properties_typeProperties_database": {
+            "type": "string",
+            "defaultValue": "FileIngestDB"
+        },
+        "LS_SQLDB_properties_typeProperties_userName": {
+            "type": "string",
+            "defaultValue": "sqladmin"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_ADLS')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobFS",
+                "typeProperties": {
+                    "url": "[parameters('LS_ADLS_properties_typeProperties_url')]",
+                    "accountKey": {
+                        "type": "SecureString",
+                        "value": "[parameters('LS_ADLS_accountKey')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_SQLDB')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureSqlDatabase",
+                "typeProperties": {
+                    "server": "[parameters('LS_SQLDB_properties_typeProperties_server')]",
+                    "database": "[parameters('LS_SQLDB_properties_typeProperties_database')]",
+                    "encrypt": "mandatory",
+                    "trustServerCertificate": false,
+                    "authenticationType": "SQL",
+                    "userName": "[parameters('LS_SQLDB_properties_typeProperties_userName')]",
+                    "password": {
+                        "type": "SecureString",
+                        "value": "[parameters('LS_SQLDB_password')]"
+                    }
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_CUST_MSTR')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "folderPath": {
+                        "type": "string",
+                        "defaultValue": "rawdata"
+                    },
+                    "fileName": {
+                        "type": "string",
+                        "defaultValue": "CUST_MSTR_20191112.csv"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().fileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().folderPath",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_MASTER_CHILD')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "folderPath": {
+                        "type": "string",
+                        "defaultValue": "@item().folderPath"
+                    },
+                    "fileName": {
+                        "type": "string",
+                        "defaultValue": "@item().name"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().fileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().folderPath",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_H_ECOM_ORDER')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "fileName": {
+                        "type": "string",
+                        "defaultValue": "@item().name"
+                    },
+                    "folderPath": {
+                        "type": "string",
+                        "defaultValue": "@item().folderPath"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": {
+                            "value": "@dataset().fileName",
+                            "type": "Expression"
+                        },
+                        "folderPath": {
+                            "value": "@dataset().folderPath",
+                            "type": "Expression"
+                        }
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_CUST_MSTR')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLDB",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "CustomerID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Name",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Location",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FileDate",
+                        "type": "date"
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "CUST_MSTR"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLDB')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_MASTER_CHILD')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLDB",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "MasterID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "ChildID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Name",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "FileDate",
+                        "type": "date"
+                    },
+                    {
+                        "name": "DateKey",
+                        "type": "int",
+                        "precision": 10
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "master_child"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLDB')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_SQL_H_ECOM_ORDERS')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_SQLDB",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "AzureSqlTable",
+                "schema": [
+                    {
+                        "name": "OrderID",
+                        "type": "int",
+                        "precision": 10
+                    },
+                    {
+                        "name": "Item",
+                        "type": "nvarchar"
+                    },
+                    {
+                        "name": "Quantity",
+                        "type": "int",
+                        "precision": 10
+                    }
+                ],
+                "typeProperties": {
+                    "schema": "dbo",
+                    "table": "H_ECOM_Orders"
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLDB')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DelimitedText1')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "folderPath": "rawdata"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_FileLoad_Daily')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Stored_procedure_cust",
+                        "type": "SqlServerStoredProcedure",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "storedProcedureName": "[[dbo].[Truncate_CUST_MSTR]"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "LS_SQLDB",
+                            "type": "LinkedServiceReference"
+                        }
+                    },
+                    {
+                        "name": "Stored_procedure_master",
+                        "type": "SqlServerStoredProcedure",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "storedProcedureName": "[[dbo].[Truncate_MASTER_CHILD]"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "LS_SQLDB",
+                            "type": "LinkedServiceReference"
+                        }
+                    },
+                    {
+                        "name": "Stored_procedure_order",
+                        "type": "SqlServerStoredProcedure",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "storedProcedureName": "[[dbo].[Truncate_H_ECOM_ORDERS]"
+                        },
+                        "linkedServiceName": {
+                            "referenceName": "LS_SQLDB",
+                            "type": "LinkedServiceReference"
+                        }
+                    },
+                    {
+                        "name": "Copy data1",
+                        "type": "Copy",
+                        "dependsOn": [
+                            {
+                                "activity": "Stored_procedure_cust",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "DelimitedTextSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "AzureSqlSink",
+                                "writeBehavior": "insert",
+                                "sqlWriterUseTableLock": false
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "mappings": [
+                                    {
+                                        "source": {
+                                            "name": "CustomerID",
+                                            "type": "String",
+                                            "physicalType": "String"
+                                        },
+                                        "sink": {
+                                            "name": "CustomerID",
+                                            "type": "Int32",
+                                            "physicalType": "int"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Name",
+                                            "type": "String",
+                                            "physicalType": "String"
+                                        },
+                                        "sink": {
+                                            "name": "Name",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        }
+                                    },
+                                    {
+                                        "source": {
+                                            "name": "Location",
+                                            "type": "String",
+                                            "physicalType": "String"
+                                        },
+                                        "sink": {
+                                            "name": "Location",
+                                            "type": "String",
+                                            "physicalType": "nvarchar"
+                                        }
+                                    }
+                                ],
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_CUST_MSTR",
+                                "type": "DatasetReference",
+                                "parameters": {
+                                    "folderPath": "rawdata",
+                                    "fileName": "CUST_MSTR_20191112.csv"
+                                }
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_SQL_CUST_MSTR",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Copy data2",
+                        "type": "Copy",
+                        "dependsOn": [
+                            {
+                                "activity": "Stored_procedure_master",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "DelimitedTextSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "AzureSqlSink",
+                                "writeBehavior": "insert",
+                                "sqlWriterUseTableLock": false
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_MASTER_CHILD",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_SQL_MASTER_CHILD",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Copy data3",
+                        "type": "Copy",
+                        "dependsOn": [
+                            {
+                                "activity": "Stored_procedure_order",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "DelimitedTextSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobFSReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "DelimitedTextReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "AzureSqlSink",
+                                "writeBehavior": "insert",
+                                "sqlWriterUseTableLock": false
+                            },
+                            "enableStaging": false,
+                            "translator": {
+                                "type": "TabularTranslator",
+                                "typeConversion": true,
+                                "typeConversionSettings": {
+                                    "allowDataTruncation": true,
+                                    "treatBooleanAsNumber": false
+                                }
+                            }
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_H_ECOM_ORDER",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_SQL_H_ECOM_ORDERS",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_SQLDB')]",
+                "[concat(variables('factoryId'), '/datasets/DS_CUST_MSTR')]",
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_CUST_MSTR')]",
+                "[concat(variables('factoryId'), '/datasets/DS_MASTER_CHILD')]",
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_MASTER_CHILD')]",
+                "[concat(variables('factoryId'), '/datasets/DS_H_ECOM_ORDER')]",
+                "[concat(variables('factoryId'), '/datasets/DS_SQL_H_ECOM_ORDERS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/new_pipeline')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Metadata1",
+                        "type": "GetMetadata",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataset": {
+                                "referenceName": "new_dataset_test",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            },
+                            "fieldList": [
+                                "childItems"
+                            ],
+                            "storeSettings": {
+                                "type": "AzureBlobFSReadSettings",
+                                "enablePartitionDiscovery": false
+                            },
+                            "formatSettings": {
+                                "type": "DelimitedTextReadSettings"
+                            }
+                        }
+                    },
+                    {
+                        "name": "ForEach1",
+                        "type": "ForEach",
+                        "dependsOn": [
+                            {
+                                "activity": "Metadata1",
+                                "dependencyConditions": [
+                                    "Succeeded"
+                                ]
+                            }
+                        ],
+                        "userProperties": [],
+                        "typeProperties": {
+                            "items": {
+                                "value": "@activity('Metadata1').output.childItems\n",
+                                "type": "Expression"
+                            },
+                            "isSequential": true,
+                            "activities": [
+                                {
+                                    "name": "If Condition1",
+                                    "type": "IfCondition",
+                                    "dependsOn": [],
+                                    "userProperties": [],
+                                    "typeProperties": {
+                                        "expression": {
+                                            "value": "@and(\n    greaterOrEquals(\n        length(item().name),\n        12\n    ),\n    and(\n        and(\n            and(\n                and(\n                    and(\n                        and(\n                            and(\n                                and(\n                                    greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 1), '0'),\n                                    lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 1), '9')\n                                ),\n                                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -7), 1), '0')\n                            ),\n                            lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -7), 1), '9')\n                        ),\n                        greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -6), 1), '0')\n                    ),\n                    lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -6), 1), '9')\n                ),\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -5), 1), '0')\n            ),\n            lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -5), 1), '9')\n        ),\n        and(\n            and(\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -4), 1), '0'),\n                lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -4), 1), '9')\n            ),\n            and(\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -3), 1), '0'),\n                lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -3), 1), '9')\n            )\n        )\n    )\n)\n",
+                                            "type": "Expression"
+                                        },
+                                        "ifFalseActivities": [
+                                            {
+                                                "name": "Copy data4",
+                                                "type": "Copy",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.12:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "DelimitedTextSource",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSReadSettings",
+                                                            "recursive": true,
+                                                            "enablePartitionDiscovery": false
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextReadSettings"
+                                                        }
+                                                    },
+                                                    "sink": {
+                                                        "type": "DelimitedTextSink",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSWriteSettings"
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextWriteSettings",
+                                                            "quoteAllText": true,
+                                                            "fileExtension": ".txt"
+                                                        }
+                                                    },
+                                                    "enableStaging": false,
+                                                    "translator": {
+                                                        "type": "TabularTranslator",
+                                                        "typeConversion": true,
+                                                        "typeConversionSettings": {
+                                                            "allowDataTruncation": true,
+                                                            "treatBooleanAsNumber": false
+                                                        }
+                                                    }
+                                                },
+                                                "inputs": [
+                                                    {
+                                                        "referenceName": "ds_non_metadata_input",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "Directory": "rawdata/rawinput",
+                                                            "FileName": {
+                                                                "value": "@item().name",
+                                                                "type": "Expression"
+                                                            }
+                                                        }
+                                                    }
+                                                ],
+                                                "outputs": [
+                                                    {
+                                                        "referenceName": "output_new",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "Directory": "@concat('rawdata/rawoutput/', split(item().name, '_')[0], '_', split(item().name, '_')[1], '/')",
+                                                            "FileName": "@item().name"
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        "ifTrueActivities": [
+                                            {
+                                                "name": "fileDate",
+                                                "type": "SetVariable",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "variableName": "fileDate",
+                                                    "value": "@substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 8)\n"
+                                                }
+                                            },
+                                            {
+                                                "name": "filePrefix",
+                                                "type": "SetVariable",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "variableName": "filePrefix",
+                                                    "value": "@substring(replace(item().name, '.csv', ''), 0, add(length(replace(item().name, '.csv', '')), -9))"
+                                                }
+                                            },
+                                            {
+                                                "name": "Copy data1",
+                                                "type": "Copy",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.12:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "source": {
+                                                        "type": "DelimitedTextSource",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSReadSettings",
+                                                            "recursive": true,
+                                                            "enablePartitionDiscovery": false
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextReadSettings"
+                                                        }
+                                                    },
+                                                    "sink": {
+                                                        "type": "DelimitedTextSink",
+                                                        "storeSettings": {
+                                                            "type": "AzureBlobFSWriteSettings"
+                                                        },
+                                                        "formatSettings": {
+                                                            "type": "DelimitedTextWriteSettings",
+                                                            "quoteAllText": true,
+                                                            "fileExtension": ".txt"
+                                                        }
+                                                    },
+                                                    "enableStaging": false,
+                                                    "translator": {
+                                                        "type": "TabularTranslator",
+                                                        "typeConversion": true,
+                                                        "typeConversionSettings": {
+                                                            "allowDataTruncation": true,
+                                                            "treatBooleanAsNumber": false
+                                                        }
+                                                    }
+                                                },
+                                                "inputs": [
+                                                    {
+                                                        "referenceName": "ds_non_metadata_input",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "Directory": "rawdata/rawinput",
+                                                            "FileName": "@item().name"
+                                                        }
+                                                    }
+                                                ],
+                                                "outputs": [
+                                                    {
+                                                        "referenceName": "output_new",
+                                                        "type": "DatasetReference",
+                                                        "parameters": {
+                                                            "Directory": "@concat('rawdata/rawoutput/', split(item().name, '_')[0], '_', split(item().name, '_')[1], '/')",
+                                                            "FileName": "@item().name"
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "name": "Data flow1",
+                                                "type": "ExecuteDataFlow",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "timeout": "0.12:00:00",
+                                                    "retry": 0,
+                                                    "retryIntervalInSeconds": 30,
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "dataflow": {
+                                                        "referenceName": "dataflow1",
+                                                        "type": "DataFlowReference",
+                                                        "parameters": {
+                                                            "dateDash1": {
+                                                                "value": "'@{variables('CUST_date_Format')}'",
+                                                                "type": "Expression"
+                                                            },
+                                                            "dateDash2Key": {
+                                                                "value": "'@{variables('fileDate')}'",
+                                                                "type": "Expression"
+                                                            }
+                                                        },
+                                                        "datasetParameters": {
+                                                            "source1": {},
+                                                            "sink1": {}
+                                                        },
+                                                        "linkedServiceParameters": {}
+                                                    },
+                                                    "staging": {},
+                                                    "compute": {
+                                                        "coreCount": 8,
+                                                        "computeType": "General"
+                                                    },
+                                                    "traceLevel": "Fine"
+                                                }
+                                            },
+                                            {
+                                                "name": "CUST_date_Format",
+                                                "type": "SetVariable",
+                                                "dependsOn": [],
+                                                "policy": {
+                                                    "secureOutput": false,
+                                                    "secureInput": false
+                                                },
+                                                "userProperties": [],
+                                                "typeProperties": {
+                                                    "variableName": "CUST_date_Format",
+                                                    "value": "@concat(\n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 0, 4), '-', \n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 4, 2), '-', \n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 6, 2)\n)\n"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "variables": {
+                    "filePrefix": {
+                        "type": "String"
+                    },
+                    "fileDate": {
+                        "type": "String"
+                    },
+                    "elseFileName": {
+                        "type": "String"
+                    },
+                    "dateDash": {
+                        "type": "String"
+                    },
+                    "dateNoDash": {
+                        "type": "String"
+                    },
+                    "master_fileDate": {
+                        "type": "String"
+                    },
+                    "var_dateKey": {
+                        "type": "String"
+                    },
+                    "var_fileDate": {
+                        "type": "String"
+                    },
+                    "CUST_date_Format": {
+                        "type": "String"
+                    }
+                },
+                "annotations": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/new_dataset_test')]",
+                "[concat(variables('factoryId'), '/datasets/ds_non_metadata_input')]",
+                "[concat(variables('factoryId'), '/datasets/output_new')]",
+                "[concat(variables('factoryId'), '/dataflows/dataflow1')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/new_dataset_test')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "folderPath": "rawinput",
+                        "fileSystem": "rawdata"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/output_new')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Directory": {
+                        "type": "string"
+                    },
+                    "FileName": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": "@dataset().FileName",
+                        "folderPath": "@dataset().Directory",
+                        "fileSystem": "rawoutput"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/ds_non_metadata_input')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "parameters": {
+                    "Directory": {
+                        "type": "string"
+                    },
+                    "FileName": {
+                        "type": "string"
+                    }
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileName": "@dataset().FileName",
+                        "folderPath": "@dataset().Directory"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerID",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Name",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Location",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/dataflow1')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "new_dataset_test",
+                                "type": "DatasetReference"
+                            },
+                            "name": "source1"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "output_ds_test",
+                                "type": "DatasetReference"
+                            },
+                            "name": "sink1"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "derivedColumn1"
+                        }
+                    ],
+                    "scriptLines": [
+                        "parameters{",
+                        "     dateDash1 as string (\"test default\"),",
+                        "     dateDash2Key as string (\"this is date apart from file\")",
+                        "}",
+                        "source(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     partitionRootPath: 'rawinput') ~> source1",
+                        "source1 derive(filenameDate = $dateDash1,",
+                        "          filenameDateKey = $dateDash2Key) ~> derivedColumn1",
+                        "derivedColumn1 sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     input(",
+                        "          CustomerID as string,",
+                        "          Name as string,",
+                        "          Location as string",
+                        "     ),",
+                        "     truncate: true,",
+                        "     umask: 0022,",
+                        "     preCommands: [],",
+                        "     postCommands: [],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> sink1"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/new_dataset_test')]",
+                "[concat(variables('factoryId'), '/datasets/output_ds_test')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/output_ds_test')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_ADLS",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobFSLocation",
+                        "fileSystem": "rawoutput"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": [
+                    {
+                        "name": "CustomerID",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Name",
+                        "type": "String"
+                    },
+                    {
+                        "name": "Location",
+                        "type": "String"
+                    }
+                ]
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_ADLS')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/dataflow2')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "new_dataset_test",
+                                "type": "DatasetReference"
+                            },
+                            "name": "source12"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "output_ds_test",
+                                "type": "DatasetReference"
+                            },
+                            "name": "sink12"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "derivedColumn12"
+                        }
+                    ],
+                    "scriptLines": [
+                        "parameters{",
+                        "     fileDate as string (\"fileDate\"),",
+                        "     fileDateKey as string (\"fileDateKey\")",
+                        "}",
+                        "source(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false) ~> source12",
+                        "source12 derive(fileDate = $fileDate,",
+                        "          fileDateKey = $fileDateKey) ~> derivedColumn12",
+                        "derivedColumn12 sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     input(",
+                        "          CustomerID as string,",
+                        "          Name as string,",
+                        "          Location as string",
+                        "     ),",
+                        "     umask: 0022,",
+                        "     preCommands: [],",
+                        "     postCommands: [],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> sink12"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/new_dataset_test')]",
+                "[concat(variables('factoryId'), '/datasets/output_ds_test')]"
+            ]
+        }
+    ]
+}

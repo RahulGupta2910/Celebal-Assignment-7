@@ -1,0 +1,6 @@
+selected resource name:		ds_non_metadata_input
+selected resource type:		dataset
+factory name:			adf-fileload-celebal
+factory location:		centralindia
+subscription id:		4b697afd-e4c5-4b02-a867-3c947bb49a87
+time of download (UTC):		Sun, 20 Jul 2025 15:20:04 GMT

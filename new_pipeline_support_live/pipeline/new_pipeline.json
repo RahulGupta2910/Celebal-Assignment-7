@@ -1,0 +1,315 @@
+{
+    "name": "new_pipeline",
+    "properties": {
+        "activities": [
+            {
+                "name": "Metadata1",
+                "type": "GetMetadata",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "new_dataset_test",
+                        "type": "DatasetReference"
+                    },
+                    "fieldList": [
+                        "childItems"
+                    ],
+                    "storeSettings": {
+                        "type": "AzureBlobFSReadSettings",
+                        "enablePartitionDiscovery": false
+                    },
+                    "formatSettings": {
+                        "type": "DelimitedTextReadSettings"
+                    }
+                }
+            },
+            {
+                "name": "ForEach1",
+                "type": "ForEach",
+                "dependsOn": [
+                    {
+                        "activity": "Metadata1",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "userProperties": [],
+                "typeProperties": {
+                    "items": {
+                        "value": "@activity('Metadata1').output.childItems\n",
+                        "type": "Expression"
+                    },
+                    "isSequential": true,
+                    "activities": [
+                        {
+                            "name": "If Condition1",
+                            "type": "IfCondition",
+                            "dependsOn": [],
+                            "userProperties": [],
+                            "typeProperties": {
+                                "expression": {
+                                    "value": "@and(\n    greaterOrEquals(\n        length(item().name),\n        12\n    ),\n    and(\n        and(\n            and(\n                and(\n                    and(\n                        and(\n                            and(\n                                and(\n                                    greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 1), '0'),\n                                    lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 1), '9')\n                                ),\n                                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -7), 1), '0')\n                            ),\n                            lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -7), 1), '9')\n                        ),\n                        greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -6), 1), '0')\n                    ),\n                    lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -6), 1), '9')\n                ),\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -5), 1), '0')\n            ),\n            lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -5), 1), '9')\n        ),\n        and(\n            and(\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -4), 1), '0'),\n                lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -4), 1), '9')\n            ),\n            and(\n                greaterOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -3), 1), '0'),\n                lessOrEquals(substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -3), 1), '9')\n            )\n        )\n    )\n)\n",
+                                    "type": "Expression"
+                                },
+                                "ifFalseActivities": [
+                                    {
+                                        "name": "Copy data4",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "DelimitedTextSource",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSReadSettings",
+                                                    "recursive": true,
+                                                    "enablePartitionDiscovery": false
+                                                },
+                                                "formatSettings": {
+                                                    "type": "DelimitedTextReadSettings"
+                                                }
+                                            },
+                                            "sink": {
+                                                "type": "DelimitedTextSink",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSWriteSettings"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "DelimitedTextWriteSettings",
+                                                    "quoteAllText": true,
+                                                    "fileExtension": ".txt"
+                                                }
+                                            },
+                                            "enableStaging": false,
+                                            "translator": {
+                                                "type": "TabularTranslator",
+                                                "typeConversion": true,
+                                                "typeConversionSettings": {
+                                                    "allowDataTruncation": true,
+                                                    "treatBooleanAsNumber": false
+                                                }
+                                            }
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "ds_non_metadata_input",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Directory": "rawdata/rawinput",
+                                                    "FileName": {
+                                                        "value": "@item().name",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "output_new",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Directory": "@concat('rawdata/rawoutput/', split(item().name, '_')[0], '_', split(item().name, '_')[1], '/')",
+                                                    "FileName": "@item().name"
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "ifTrueActivities": [
+                                    {
+                                        "name": "fileDate",
+                                        "type": "SetVariable",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "variableName": "fileDate",
+                                            "value": "@substring(replace(item().name, '.csv', ''), add(length(replace(item().name, '.csv', '')), -8), 8)\n"
+                                        }
+                                    },
+                                    {
+                                        "name": "filePrefix",
+                                        "type": "SetVariable",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "variableName": "filePrefix",
+                                            "value": "@substring(replace(item().name, '.csv', ''), 0, add(length(replace(item().name, '.csv', '')), -9))"
+                                        }
+                                    },
+                                    {
+                                        "name": "Copy data1",
+                                        "type": "Copy",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "source": {
+                                                "type": "DelimitedTextSource",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSReadSettings",
+                                                    "recursive": true,
+                                                    "enablePartitionDiscovery": false
+                                                },
+                                                "formatSettings": {
+                                                    "type": "DelimitedTextReadSettings"
+                                                }
+                                            },
+                                            "sink": {
+                                                "type": "DelimitedTextSink",
+                                                "storeSettings": {
+                                                    "type": "AzureBlobFSWriteSettings"
+                                                },
+                                                "formatSettings": {
+                                                    "type": "DelimitedTextWriteSettings",
+                                                    "quoteAllText": true,
+                                                    "fileExtension": ".txt"
+                                                }
+                                            },
+                                            "enableStaging": false,
+                                            "translator": {
+                                                "type": "TabularTranslator",
+                                                "typeConversion": true,
+                                                "typeConversionSettings": {
+                                                    "allowDataTruncation": true,
+                                                    "treatBooleanAsNumber": false
+                                                }
+                                            }
+                                        },
+                                        "inputs": [
+                                            {
+                                                "referenceName": "ds_non_metadata_input",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Directory": "rawdata/rawinput",
+                                                    "FileName": "@item().name"
+                                                }
+                                            }
+                                        ],
+                                        "outputs": [
+                                            {
+                                                "referenceName": "output_new",
+                                                "type": "DatasetReference",
+                                                "parameters": {
+                                                    "Directory": "@concat('rawdata/rawoutput/', split(item().name, '_')[0], '_', split(item().name, '_')[1], '/')",
+                                                    "FileName": "@item().name"
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "name": "Data flow1",
+                                        "type": "ExecuteDataFlow",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "timeout": "0.12:00:00",
+                                            "retry": 0,
+                                            "retryIntervalInSeconds": 30,
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "dataflow": {
+                                                "referenceName": "dataflow1",
+                                                "type": "DataFlowReference",
+                                                "parameters": {
+                                                    "dateDash1": {
+                                                        "value": "'@{variables('CUST_date_Format')}'",
+                                                        "type": "Expression"
+                                                    },
+                                                    "dateDash2Key": {
+                                                        "value": "'@{variables('fileDate')}'",
+                                                        "type": "Expression"
+                                                    }
+                                                }
+                                            },
+                                            "compute": {
+                                                "coreCount": 8,
+                                                "computeType": "General"
+                                            },
+                                            "traceLevel": "Fine"
+                                        }
+                                    },
+                                    {
+                                        "name": "CUST_date_Format",
+                                        "type": "SetVariable",
+                                        "dependsOn": [],
+                                        "policy": {
+                                            "secureOutput": false,
+                                            "secureInput": false
+                                        },
+                                        "userProperties": [],
+                                        "typeProperties": {
+                                            "variableName": "CUST_date_Format",
+                                            "value": "@concat(\n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 0, 4), '-', \n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 4, 2), '-', \n    substring(substring(replace(item().name, '.csv', ''), sub(length(replace(item().name, '.csv', '')), 8), 8), 6, 2)\n)\n"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "variables": {
+            "filePrefix": {
+                "type": "String"
+            },
+            "fileDate": {
+                "type": "String"
+            },
+            "elseFileName": {
+                "type": "String"
+            },
+            "dateDash": {
+                "type": "String"
+            },
+            "dateNoDash": {
+                "type": "String"
+            },
+            "master_fileDate": {
+                "type": "String"
+            },
+            "var_dateKey": {
+                "type": "String"
+            },
+            "var_fileDate": {
+                "type": "String"
+            },
+            "CUST_date_Format": {
+                "type": "String"
+            }
+        },
+        "annotations": []
+    }
+}

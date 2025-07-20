@@ -1,0 +1,27 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "value": "adf-fileload-celebal"
+        },
+        "LS_ADLS_accountKey": {
+            "value": ""
+        },
+        "LS_SQLDB_password": {
+            "value": ""
+        },
+        "LS_ADLS_properties_typeProperties_url": {
+            "value": "https://adffileloadstorage.dfs.core.windows.net/"
+        },
+        "LS_SQLDB_properties_typeProperties_server": {
+            "value": "adf-sql-server-celebal.database.windows.net"
+        },
+        "LS_SQLDB_properties_typeProperties_database": {
+            "value": "FileIngestDB"
+        },
+        "LS_SQLDB_properties_typeProperties_userName": {
+            "value": "sqladmin"
+        }
+    }
+}
